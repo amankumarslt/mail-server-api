@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+      - "2525:2525"
+    env_file:
+      - .env
+    restart: always
+
+  frontend:
+    build: ./mail-frontend
+    ports:
+      - "5173:80" # Maps localhost:5173 to container Nginx port 80
+    depends_on:
+      - backend
+    restart: always
