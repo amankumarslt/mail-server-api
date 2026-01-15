@@ -1,0 +1,107 @@
+use crate::core::{gmail_api, imap_client, workos_auth, oauth, jwt};
+use actix_web::{web, HttpResponse};
+use sqlx::{PgPool, Row};
+use serde::{Deserialize, Serialize};
+
+// ... existing imports ...
+
+#[derive(Serialize)]
+pub struct TempMailResponse {
+    pub id: String,
+    pub email: String,
+    pub token: String,
+}
+
+/// Create a temporary email address
+pub async fn create_temp_mail(pool: web::Data<PgPool>) -> HttpResponse {
+    let timestamp = chrono::Utc::now().timestamp_micros();
+    let user_id = format!("temp_{}", timestamp);
+    // Use localhost or your domain
+    let email = format!("{}@localhost", user_id); 
+    
+    let result = sqlx::query(
+        r#"
+        INSERT INTO users (id, email, auth_provider)
+        VALUES ($1, $2, 'temp')
+        "#
+    )
+    .bind(&user_id)
+    .bind(&email)
+    .execute(pool.get_ref())
+    .await;
+    
+    match result {
+        Ok(_) => {
+            let token = jwt::generate_token(&user_id).unwrap_or_default();
+            HttpResponse::Ok().json(TempMailResponse {
+                id: user_id,
+                email,
+                token,
+            })
+        },
+        Err(e) => HttpResponse::InternalServerError().json(format!("DB error: {}", e)),
+    }
+}
+
+/// Delete a temporary email address
+pub async fn delete_temp_mail(
+    pool: web::Data<PgPool>,
+    path: web::Path<String>,
+) -> HttpResponse {
+    let user_id = path.into_inner();
+    
+    // Check if it is actually a temp user check prefix to be safe?
+    if !user_id.starts_with("temp_") {
+        return HttpResponse::BadRequest().json("Can only delete temp users");
+    }
+
+    // Delete emails first (or cascade if configured, but let's be explicit)
+    let _ = sqlx::query("DELETE FROM emails WHERE user_id = $1")
+        .bind(&user_id)
+        .execute(pool.get_ref())
+        .await;
+
+    let result = sqlx::query("DELETE FROM users WHERE id = $1")
+        .bind(&user_id)
+        .execute(pool.get_ref())
+        .await;
+        
+    match result {
+        Ok(_) => HttpResponse::Ok().json("Deleted"),
+        Err(e) => HttpResponse::InternalServerError().json(format!("DB error: {}", e)),
+    }
+}
+
+/// Get all emails for a user (useful for temp mail listing)
+pub async fn get_all_emails(
+    pool: web::Data<PgPool>,
+    path: web::Path<String>,
+) -> HttpResponse {
+    let user_id = path.into_inner();
+    
+    let result = sqlx::query(
+        r#"
+        SELECT sender, subject, body_preview, received_at::text
+        FROM emails
+        WHERE user_id = $1
+        ORDER BY received_at DESC
+        Limit 50
+        "#
+    )
+    .bind(user_id)
+    .fetch_all(pool.get_ref())
+    .await;
+    
+    match result {
+        Ok(rows) => {
+            let emails: Vec<SyncedEmail> = rows.into_iter().map(|row| SyncedEmail {
+                sender: row.get::<String, _>("sender"),
+                subject: row.get::<Option<String>, _>("subject").unwrap_or_default(),
+                preview: row.get::<Option<String>, _>("body_preview").unwrap_or_default(),
+                received_at: row.get::<Option<String>, _>("received_at").unwrap_or_default(),
+            }).collect();
+            HttpResponse::Ok().json(emails)
+        },
+        Err(e) => HttpResponse::InternalServerError().json(format!("DB error: {}", e)),
+    }
+}
