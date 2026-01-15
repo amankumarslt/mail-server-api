@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input'
 import { ApiPlayground } from '@/components/ApiPlayground'
 import './App.css'
 
-const API_URL = 'http://localhost:8080'
+// Dynamically point to Backend on same host, port 8080
+const API_URL = `http://${window.location.hostname}:8080`
 
 interface User {
   id: string

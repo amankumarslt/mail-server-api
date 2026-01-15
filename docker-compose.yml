@@ -8,12 +8,19 @@ services:
       - "2525:2525"
     env_file:
       - .env
+    network_mode: host # Allows loopback communication
     restart: always
 
   frontend:
     build: ./mail-frontend
     ports:
-      - "5173:80" # Maps localhost:5173 to container Nginx port 80
-    depends_on:
-      - backend
+      - "5173:80"
     restart: always
+
+  # ☁️ The Tunnel Service "Sidecar"
+  # Runs alongside your app and securely exposes it
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    network_mode: host # Must be host mode to reach localhost:8080/5173
+    command: tunnel --no-autoupdate run --token eyJhIjoiYjhjNTdmYjkxMTg1YWM0YjY2ZWU4YWVhOTdkMWI1M2UiLCJ0IjoiMjdhNjYwMDAtNTJiNi00NjkxLThiMTgtZmRjNTk2YjhmMjVhIiwicyI6Ik56UTFPR0pqTWpjdE9EYzNaUzAwWXpVNUxXRTBNR0V0WkdaaU4yRXhNREk1TTJFMSJ9
