@@ -68,7 +68,9 @@ async fn main() -> std::io::Result<()> {
         let cors = Cors::default()
             .allowed_origin("http://localhost:5173")
             .allowed_origin("http://127.0.0.1:5173")
-            .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+            .allowed_origin("https://mail.rapidxoxo.dpdns.org")
+            .allowed_origin("https://rapidxoxo.dpdns.org")
+            .allowed_methods(vec!["GET", "POST", "DELETE", "OPTIONS"])
             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
             .allowed_header(header::CONTENT_TYPE)
             .max_age(3600);
