@@ -5,8 +5,15 @@ import { Input } from '@/components/ui/input'
 import { ApiPlayground } from '@/components/ApiPlayground'
 import './App.css'
 
-// Dynamically point to Backend on same host, port 8080
-const API_URL = `http://${window.location.hostname}:8080`
+// Smart API URL: Use api subdomain in production, localhost in dev
+const API_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:8080'
+  : `https://api.${window.location.hostname.replace(/^(mail|app)\./, '')}`
+
+// Mail domain for temp aliases
+const MAIL_DOMAIN = window.location.hostname === 'localhost'
+  ? 'localhost'
+  : window.location.hostname.replace(/^(mail|app)\./, '')
 
 interface User {
   id: string
@@ -250,9 +257,9 @@ function App() {
                   <h3 className="font-semibold mb-2">Disposable Alias</h3>
                   {user.temp_alias ? (
                     <div className="flex items-center gap-4 bg-muted p-3 rounded-md">
-                      <span className="font-mono text-sm">{user.temp_alias}@localhost</span>
+                      <span className="font-mono text-sm">{user.temp_alias}@{MAIL_DOMAIN}</span>
                       <div className="ml-auto flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`${user.temp_alias}@localhost`)}>
+                        <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(`${user.temp_alias}@${MAIL_DOMAIN}`)}>
                           Copy
                         </Button>
                         <Button size="sm" variant="destructive" onClick={handleDeleteTempAlias}>
