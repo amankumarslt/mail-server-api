@@ -19,7 +19,7 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     apt-get update && apt-get install -y cloudflared
 
 COPY --from=builder /app/target/release/mail-server /app/mail-server
-COPY .env.example .env
+# Don't copy .env.example - use --env-file at runtime instead
 COPY start.sh .
 
 # Fix "exec format error" by stripping Windows line endings (CRLF -> LF)
