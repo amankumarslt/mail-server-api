@@ -658,10 +658,12 @@ pub async fn create_temp_mail(
     
     match result {
         Ok(_) => {
+            // Get mail domain from env, default to localhost for dev
+            let mail_domain = std::env::var("MAIL_DOMAIN").unwrap_or_else(|_| "localhost".to_string());
             HttpResponse::Ok().json(serde_json::json!({
                 "id": user_id, // Return real user ID
                 "alias": alias,
-                "email": format!("{}@localhost", alias)
+                "email": format!("{}@{}", alias, mail_domain)
             }))
         },
         Err(e) => HttpResponse::InternalServerError().json(format!("DB error: {}", e)),
