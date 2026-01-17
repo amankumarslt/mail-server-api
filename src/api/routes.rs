@@ -464,6 +464,15 @@ pub struct SSOQuery {
 }
 
 #[derive(Deserialize)]
+pub struct EmailWebhookPayload {
+    pub from: String,
+    pub to: String,
+    pub subject: String,
+    pub body: String,
+    pub message_id: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub struct WorkOSCallbackQuery {
     code: String,
     state: Option<String>,
@@ -754,6 +763,79 @@ pub async fn get_all_emails(
     }
 }
 
+/// Handle incoming email webhook from Cloudflare
+pub async fn handle_email_webhook(
+    pool: web::Data<PgPool>,
+    payload: web::Json<EmailWebhookPayload>,
+    req: HttpRequest,
+) -> HttpResponse {
+    // 1. Verify Secret
+    let secret = std::env::var("WEBHOOK_SECRET").unwrap_or_default();
+    let header_secret = req.headers().get("X-Webhook-Secret")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
+        
+    if secret.is_empty() || secret != header_secret {
+        return HttpResponse::Unauthorized().json("Invalid webhook secret");
+    }
+
+    // 2. Extract Alias (local part of email)
+    // "temp_123@domain.com" -> "temp_123"
+    let to_address = payload.to.clone();
+    let local_part = to_address.split('@').next().unwrap_or("");
+
+    println!("📩 Webhook received email for: {}", local_part);
+
+    // 3. Lookup User ID
+    let user_row = sqlx::query!(
+        r#"
+        SELECT user_id AS id FROM temp_aliases WHERE alias=$1
+        "#,
+        local_part
+    )
+    .fetch_optional(pool.get_ref())
+    .await;
+
+    match user_row {
+        Ok(Some(row)) => {
+            let user_id = row.id;
+            let message_id = payload.message_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+            
+            // 4. Save to Database
+            let insert_res = sqlx::query(
+                r#"
+                INSERT INTO emails (user_id, message_id, sender, subject, body_preview, received_at)
+                VALUES ($1, $2, $3, $4, $5, NOW())
+                ON CONFLICT (user_id, message_id) DO NOTHING
+                "#
+            )
+            .bind(&user_id)
+            .bind(&message_id)
+            .bind(&payload.from)
+            .bind(&payload.subject)
+            .bind(&payload.body) // For now, body is preview
+            .execute(pool.get_ref())
+            .await;
+
+            match insert_res {
+                Ok(_) => {
+                    println!("✅ Saved email via webhook for user {}", user_id);
+                    HttpResponse::Ok().json("Email processed")
+                },
+                Err(e) => {
+                    eprintln!("❌ Failed to save email: {}", e);
+                    HttpResponse::InternalServerError().json(format!("DB error: {}", e))
+                }
+            }
+        },
+        Ok(None) => {
+            println!("⚠️ Unknown alias: {}", local_part);
+            HttpResponse::NotFound().json("Alias not found")
+        },
+        Err(e) => HttpResponse::InternalServerError().json(format!("DB error: {}", e)),
+    }
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::resource("/users")
@@ -803,6 +885,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     .service(
         web::resource("/emails/{id}")
             .route(web::get().to(get_all_emails))
+    )
+    .service(
+        web::resource("/webhooks/email")
+            .route(web::post().to(handle_email_webhook))
     );
 }
 

@@ -5,15 +5,11 @@ import { Input } from '@/components/ui/input'
 import { ApiPlayground } from '@/components/ApiPlayground'
 import './App.css'
 
-// Smart API URL: Use api subdomain in production, localhost in dev
-const API_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:8080'
-  : `https://api.${window.location.hostname.replace(/^(mail|app)\./, '')}`
+// Production API URL
+const API_URL = 'https://api.rapidxoxo.dpdns.org';
 
-// Mail domain for temp aliases
-const MAIL_DOMAIN = window.location.hostname === 'localhost'
-  ? 'localhost'
-  : window.location.hostname.replace(/^(mail|app)\./, '')
+// Production Mail Domain
+const MAIL_DOMAIN = 'rapidxoxo.dpdns.org';
 
 interface User {
   id: string

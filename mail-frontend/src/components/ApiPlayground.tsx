@@ -8,7 +8,8 @@ interface ApiPlaygroundProps {
     userId: string
 }
 
-const API_URL = 'http://localhost:8080'
+// Production API URL
+const API_URL = 'https://api.rapidxoxo.dpdns.org';
 
 export function ApiPlayground({ token, userId }: ApiPlaygroundProps) {
     const [response, setResponse] = useState<string | null>(null)
@@ -29,6 +30,13 @@ export function ApiPlayground({ token, userId }: ApiPlaygroundProps) {
             endpoint: `/latest/${userId}`,
             description: 'Get the most recent email stored in the database',
             curl: `curl -H "Authorization: Bearer ${token}" ${API_URL}/latest/${userId}`
+        },
+        {
+            name: 'Get All Emails',
+            method: 'GET',
+            endpoint: `/emails/${userId}`,
+            description: 'Get all emails for this user (including temp mail)',
+            curl: `curl -H "Authorization: Bearer ${token}" ${API_URL}/emails/${userId}`
         }
     ]
 
