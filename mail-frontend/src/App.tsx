@@ -118,7 +118,7 @@ function App() {
     if (!user || !token) return
     if (!confirm('Delete this alias? You will stop receiving mail for it.')) return
     try {
-      await fetch(`${API_URL}/temp-mail/${user.id}`, {
+      await fetch(`${API_URL}/temp-mail`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
