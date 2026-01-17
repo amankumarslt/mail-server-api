@@ -23,6 +23,7 @@ base64 = "0.21"
 jsonwebtoken = "9"
 bcrypt = "0.15"
 url = "2.5"
+uuid = { version = "1", features = ["v4"] }
 
 
 

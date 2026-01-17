@@ -787,18 +787,17 @@ pub async fn handle_email_webhook(
     println!("📩 Webhook received email for: {}", local_part);
 
     // 3. Lookup User ID
-    let user_row = sqlx::query!(
-        r#"
-        SELECT user_id AS id FROM temp_aliases WHERE alias=$1
-        "#,
-        local_part
+    let user_row = sqlx::query(
+        r#"SELECT user_id AS id FROM temp_aliases WHERE alias=$1"#
     )
+    .bind(local_part)
     .fetch_optional(pool.get_ref())
     .await;
 
     match user_row {
         Ok(Some(row)) => {
-            let user_id = row.id;
+            use sqlx::Row;
+            let user_id: String = row.get("id");
             let message_id = payload.message_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
             
             // 4. Save to Database
