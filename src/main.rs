@@ -54,6 +54,16 @@ async fn main() -> std::io::Result<()> {
         Ok(_) => println!("✅ Column 'temp_alias' cleanup done."),
         Err(e) => eprintln!("⚠️ Failed to drop column (might not exist): {}", e),
     }
+
+    // 3. Add OTP column to emails table
+    let otp_col_res = sqlx::query("ALTER TABLE emails ADD COLUMN IF NOT EXISTS otp TEXT")
+        .execute(&pool)
+        .await;
+        
+    match otp_col_res {
+        Ok(_) => println!("✅ Column 'otp' checked/added to 'emails'."),
+        Err(e) => eprintln!("⚠️ Failed to add 'otp' column: {}", e),
+    }
     
     // Spawn SMTP server in background
     let smtp_pool = pool.clone();

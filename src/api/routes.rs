@@ -470,6 +470,10 @@ pub struct EmailWebhookPayload {
     pub subject: String,
     pub body: String,
     pub message_id: Option<String>,
+    pub otp: Option<String>,
+}
+    pub body: String,
+    pub message_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -710,6 +714,7 @@ pub struct SyncedEmail {
     pub sender: String,
     pub subject: String,
     pub preview: String,
+    pub otp: Option<String>,
     pub received_at: String,
 }
 
@@ -719,10 +724,11 @@ impl serde::Serialize for SyncedEmail {
         S: serde::Serializer,
     {
         use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("SyncedEmail", 4)?;
+        let mut state = serializer.serialize_struct("SyncedEmail", 5)?;
         state.serialize_field("sender", &self.sender)?;
         state.serialize_field("subject", &self.subject)?;
         state.serialize_field("preview", &self.preview)?;
+        state.serialize_field("otp", &self.otp)?;
         state.serialize_field("received_at", &self.received_at)?;
         state.end()
     }
@@ -737,7 +743,7 @@ pub async fn get_all_emails(
     
     let result = sqlx::query(
         r#"
-        SELECT sender, subject, body_preview, received_at::text
+        SELECT sender, subject, body_preview, otp, received_at::text
         FROM emails
         WHERE user_id = $1
         ORDER BY received_at DESC
@@ -754,6 +760,7 @@ pub async fn get_all_emails(
                 sender: row.get::<String, _>("sender"),
                 subject: row.get::<Option<String>, _>("subject").unwrap_or_default(),
                 preview: row.get::<Option<String>, _>("body_preview").unwrap_or_default(),
+                otp: row.get::<Option<String>, _>("otp"),
                 received_at: row.get::<Option<String>, _>("received_at").unwrap_or_default(),
             }).collect();
             HttpResponse::Ok().json(emails)
@@ -802,8 +809,8 @@ pub async fn handle_email_webhook(
             // 4. Save to Database
             let insert_res = sqlx::query(
                 r#"
-                INSERT INTO emails (user_id, message_id, sender, subject, body_preview, received_at)
-                VALUES ($1, $2, $3, $4, $5, NOW())
+                INSERT INTO emails (user_id, message_id, sender, subject, body_preview, otp, received_at)
+                VALUES ($1, $2, $3, $4, $5, $6, NOW())
                 ON CONFLICT (user_id, message_id) DO NOTHING
                 "#
             )
@@ -812,6 +819,7 @@ pub async fn handle_email_webhook(
             .bind(&payload.from)
             .bind(&payload.subject)
             .bind(&payload.body) // For now, body is preview
+            .bind(&payload.otp)
             .execute(pool.get_ref())
             .await;
 
