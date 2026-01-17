@@ -683,7 +683,6 @@ pub async fn create_temp_mail(
 pub async fn delete_temp_mail(
     pool: web::Data<PgPool>,
     req: HttpRequest,
-    _path: web::Path<String>, // Keep path for compatibility or ignore? Better to use token user_id
 ) -> HttpResponse {
      // Validate Token
     let auth_header = req.headers().get("Authorization").and_then(|h| h.to_str().ok()).unwrap_or("");
