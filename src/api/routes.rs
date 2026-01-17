@@ -381,6 +381,7 @@ pub async fn sync_emails(
                             sender: fetched.sender,
                             subject: fetched.subject,
                             preview: fetched.body_preview,
+                            otp: None,
                             received_at: chrono::Utc::now().to_string(),
                         }),
                         message: "Email synced successfully".to_string(),
