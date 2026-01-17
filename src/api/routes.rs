@@ -472,9 +472,6 @@ pub struct EmailWebhookPayload {
     pub message_id: Option<String>,
     pub otp: Option<String>,
 }
-    pub body: String,
-    pub message_id: Option<String>,
-}
 
 #[derive(Deserialize)]
 pub struct WorkOSCallbackQuery {
