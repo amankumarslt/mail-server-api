@@ -11,6 +11,7 @@ pub struct EmailResponse {
     sender: String,
     subject: String,
     preview: String,
+    otp: Option<String>,
     received_at: String,
 }
 
@@ -432,7 +433,7 @@ pub async fn get_latest(
     }
     let result = sqlx::query(
         r#"
-        SELECT sender, subject, body_preview, received_at::text
+        SELECT sender, subject, body_preview, otp, received_at::text
         FROM emails
         WHERE user_id = $1
         ORDER BY received_at DESC
@@ -448,6 +449,7 @@ pub async fn get_latest(
             sender: row.get("sender"),
             subject: row.get::<Option<String>, _>("subject").unwrap_or_default(),
             preview: row.get::<Option<String>, _>("body_preview").unwrap_or_default(),
+            otp: row.get::<Option<String>, _>("otp"),
             received_at: row.get::<Option<String>, _>("received_at").unwrap_or_default(),
         }),
         Ok(None) => HttpResponse::NotFound().json("Inbox Empty"),
